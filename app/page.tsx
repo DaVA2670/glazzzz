@@ -28,7 +28,6 @@ const HERO_NAV = [
   { href: '#screens', label: 'Экраны' },
   { href: '#map', label: 'Карта' },
   { href: '#cases', label: 'Кейсы' },
-  { href: '#calc', label: 'Расчёт' },
   { href: '#faq', label: 'FAQ' },
   { href: '#contacts', label: 'Контакты' }
 ] as const;
@@ -50,7 +49,6 @@ const SIDE_NAV = [
   { id: 'screens',     label: 'Экраны' },
   { id: 'map',         label: 'Карта' },
   { id: 'cases',       label: 'Кейсы' },
-  { id: 'calc',        label: 'Расчёт' },
   { id: 'specs',       label: 'Спека' },
   { id: 'faq',         label: 'FAQ' },
   { id: 'lead',        label: 'Заявка' }
@@ -167,21 +165,6 @@ const SCREEN_MAP_POINTS: Record<string, { x: number; y: number }> = {
   vladikavkazskaya:   { x: 72, y: 60 }
 };
 
-// Калькулятор: базовая стоимость пакета (10 сек ролик, 4 показа/час, 30 дней) и трафик
-const SCREEN_PRICING: Record<string, { base: number; traffic: number }> = {
-  rage:             { base: 40000, traffic: 12000 },
-  zabava:           { base: 50000, traffic: 18000 },
-  alan:             { base: 70000, traffic: 22000 },
-  vladikavkazskaya: { base: 70000, traffic: 20000 }
-};
-// Множители стоимости от длительности ролика (5 сек не используется)
-const DURATION_OPTIONS = [10, 15, 30] as const;
-const DURATION_MULTIPLIER: Record<number, number> = { 10: 1.0, 15: 1.4, 30: 2.5 };
-// Варианты частоты показов в час
-const FREQUENCY_OPTIONS = [4, 8, 12, 18] as const;
-// Варианты периода в днях
-const PERIOD_OPTIONS = [7, 14, 30, 60, 90] as const;
-
 // Технические требования к роликам — единая «спецификация» для агентств и продакшенов
 const SPECS = [
   { key: 'Формат файла',  value: 'MP4 / MOV',                hint: 'H.264, без аудио'        },
@@ -198,7 +181,7 @@ const SPECS = [
 const FAQ = [
   {
     q: 'Какой минимальный бюджет на размещение?',
-    a: 'Минимальный пакет — неделя на одном экране с базовой частотой показов: от 12 000 ₽. Большинство клиентов заходит с месяца на 2–3 экранах — это даёт измеримый эффект. Точную сумму увидите в калькуляторе выше.'
+    a: 'Минимальный пакет — неделя на одном экране с базовой частотой показов: от 12 000 ₽. Большинство клиентов заходит с месяца на 2–3 экранах — это даёт измеримый эффект. Точную сумму подберём после брифинга и пришлём в медиаплане.'
   },
   {
     q: 'Делаете ли вы продакшн ролика?',
@@ -284,12 +267,6 @@ export default function Home() {
   const [navOpen, setNavOpen] = useState(false);
   const [contacts, setContacts] = useState(CONTACTS_BASE);
   const heroRef = useRef<HTMLElement>(null);
-
-  // Состояние калькулятора
-  const [calcScreens, setCalcScreens] = useState<string[]>(['rage', 'alan']);
-  const [calcDuration, setCalcDuration] = useState<number>(10);
-  const [calcFrequency, setCalcFrequency] = useState<number>(8);
-  const [calcDays, setCalcDays] = useState<number>(30);
 
   // Активная точка на карте (id экрана) — общая для списка и SVG
   const [activeMapId, setActiveMapId] = useState<string>('alan');
@@ -395,33 +372,6 @@ export default function Home() {
       revealObserver.disconnect();
     };
   }, []);
-
-  // Расчёт стоимости и охвата в реальном времени
-  const calcResult = (() => {
-    const durMult = DURATION_MULTIPLIER[calcDuration] ?? 1;
-    const freqMult = calcFrequency / 4;
-    const periodMult = calcDays / 30;
-    let cost = 0;
-    let traffic = 0;
-    calcScreens.forEach((id) => {
-      const p = SCREEN_PRICING[id];
-      if (!p) return;
-      cost += p.base * durMult * freqMult * periodMult;
-      traffic += p.traffic * calcDays;
-    });
-    const showsTotal = calcFrequency * 18 * calcDays * calcScreens.length; // 18 рабочих часов в сутки
-    return {
-      cost: Math.round(cost),
-      contacts: Math.round(traffic),
-      shows: showsTotal
-    };
-  })();
-
-  function toggleCalcScreen(id: string) {
-    setCalcScreens((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  }
 
   useEffect(() => {
     document.body.style.overflow = navOpen ? 'hidden' : '';
@@ -1202,170 +1152,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="calc-section" id="calc" aria-label="Калькулятор стоимости">
-        <div className="container">
-          <div className="section-head reveal">
-            <div>
-              <div className="eyebrow">Расчёт</div>
-              <h2 className="display-h">Считаем сами,<br />в реальном времени</h2>
-            </div>
-            <p className="calc-lead">
-              Соберите свой пакет: экраны, длительность, частота, период. Цифры обновятся мгновенно. Это ориентир — финальный медиаплан пришлём после брифинга.
-            </p>
-          </div>
-          <div className="calc-grid">
-            <div className="calc-controls">
-              {/* Выбор экранов */}
-              <div className="calc-block">
-                <div className="calc-block-head">
-                  <span className="calc-block-key">01 · Экраны</span>
-                  <span className="calc-block-hint">Выберите один или несколько</span>
-                </div>
-                <div className="calc-screens">
-                  {SCREENS.map((s) => {
-                    const checked = calcScreens.includes(s.id);
-                    return (
-                      <label key={s.id} className={`calc-screen${checked ? ' is-checked' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleCalcScreen(s.id)}
-                        />
-                        <span className="calc-screen-mark" aria-hidden>
-                          <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden>
-                            <path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </span>
-                        <span className="calc-screen-body">
-                          <span className="calc-screen-name">{s.name}</span>
-                          <span className="calc-screen-meta">
-                            {s.spec} · {s.traffic}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Длительность ролика */}
-              <div className="calc-block">
-                <div className="calc-block-head">
-                  <span className="calc-block-key">02 · Длительность ролика</span>
-                </div>
-                <div className="calc-pills" role="radiogroup" aria-label="Длительность">
-                  {DURATION_OPTIONS.map((d) => (
-                    <button
-                      type="button"
-                      key={d}
-                      className={`calc-pill${calcDuration === d ? ' is-active' : ''}`}
-                      onClick={() => setCalcDuration(d)}
-                      role="radio"
-                      aria-checked={calcDuration === d}
-                    >
-                      {d} сек
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Частота показов */}
-              <div className="calc-block">
-                <div className="calc-block-head">
-                  <span className="calc-block-key">03 · Показов в час</span>
-                </div>
-                <div className="calc-pills" role="radiogroup" aria-label="Частота показов">
-                  {FREQUENCY_OPTIONS.map((f) => (
-                    <button
-                      type="button"
-                      key={f}
-                      className={`calc-pill${calcFrequency === f ? ' is-active' : ''}`}
-                      onClick={() => setCalcFrequency(f)}
-                      role="radio"
-                      aria-checked={calcFrequency === f}
-                    >
-                      {f}/час
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Период */}
-              <div className="calc-block">
-                <div className="calc-block-head">
-                  <span className="calc-block-key">04 · Период</span>
-                </div>
-                <div className="calc-pills" role="radiogroup" aria-label="Период">
-                  {PERIOD_OPTIONS.map((p) => (
-                    <button
-                      type="button"
-                      key={p}
-                      className={`calc-pill${calcDays === p ? ' is-active' : ''}`}
-                      onClick={() => setCalcDays(p)}
-                      role="radio"
-                      aria-checked={calcDays === p}
-                    >
-                      {p === 7 ? 'неделя' : p === 14 ? '2 недели' : p === 30 ? 'месяц' : p === 60 ? '2 месяца' : '3 месяца'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Результат */}
-            <aside className="calc-result" aria-live="polite">
-              <div className="calc-result-inner">
-                <div className="calc-result-head">
-                  <span className="calc-result-key">Итого</span>
-                  <span className="calc-result-period">
-                    {calcScreens.length || 0} экран{calcScreens.length === 1 ? '' : calcScreens.length >= 2 && calcScreens.length <= 4 ? 'а' : 'ов'} · {calcDays} дн.
-                  </span>
-                </div>
-                <div className="calc-result-cost">
-                  {calcScreens.length === 0
-                    ? '—'
-                    : calcResult.cost.toLocaleString('ru-RU') + ' ₽'}
-                </div>
-                <div className="calc-result-sub">
-                  {calcScreens.length === 0
-                    ? 'Выберите хотя бы один экран'
-                    : `≈ ${Math.round(calcResult.cost / calcDays).toLocaleString('ru-RU')} ₽ в день`}
-                </div>
-
-                <div className="calc-result-rows">
-                  <div className="calc-result-row">
-                    <span className="calc-result-row-key">Контактов с аудиторией</span>
-                    <span className="calc-result-row-val">
-                      {calcResult.contacts.toLocaleString('ru-RU')}
-                    </span>
-                  </div>
-                  <div className="calc-result-row">
-                    <span className="calc-result-row-key">Показов ролика</span>
-                    <span className="calc-result-row-val">
-                      {calcResult.shows.toLocaleString('ru-RU')}
-                    </span>
-                  </div>
-                  <div className="calc-result-row">
-                    <span className="calc-result-row-key">Длительность</span>
-                    <span className="calc-result-row-val">
-                      {calcDuration} сек × {calcFrequency}/час
-                    </span>
-                  </div>
-                </div>
-
-                <a className="calc-cta" href="#lead" data-goal="calc-fix-offer">
-                  Зафиксировать предложение
-                  <span aria-hidden>↗</span>
-                </a>
-                <p className="calc-disclaimer">
-                  Расчёт ориентировочный. Финальная цена зависит от свободных слотов, времени суток и пакетных скидок.
-                </p>
-              </div>
-            </aside>
-          </div>
-        </div>
-      </section>
-
       <section className="specs" id="specs" aria-label="Технические требования к роликам">
         <div className="container">
           <div className="section-head reveal">
@@ -1477,8 +1263,10 @@ export default function Home() {
               </div>
               <textarea name="comment" placeholder="Комментарий" rows={4} />
               <label className="agree">
-                <input type="checkbox" required defaultChecked />
-                <span>Согласен с <a href="/privacy">политикой конфиденциальности</a> и <a href="/consent">обработкой ПД</a></span>
+                <input type="checkbox" name="agree" required />
+                <span>
+                  Я даю <a href="/consent">согласие на обработку персональных данных</a> в указанных в форме объёме и целях и ознакомлен с <a href="/privacy">политикой конфиденциальности</a>. Согласие может быть отозвано письменным заявлением.
+                </span>
               </label>
               <button className="form-submit" type="submit" disabled={submitting}>{submitting ? 'Отправляем…' : 'Получить предложение'}</button>
               {status.msg && <div className={`status ${status.ok === true ? 'ok' : status.ok === false ? 'err' : ''}`}>{status.msg}</div>}
@@ -1497,8 +1285,43 @@ export default function Home() {
             <a href="tel:+79890371111">+7 989 037-11-11</a>
             <a href="mailto:hello@glazgoroda.ru">hello@glazgoroda.ru</a>
             <a href="/privacy">Политика конфиденциальности</a>
+            <a href="/consent">Согласие на обработку ПД</a>
           </div>
-          <div className="footer-copy">© 2026 «Глаз Города»</div>
+          <div className="footer-copy">
+            <div>© {new Date().getFullYear()} «Глаз Города»</div>
+            <div className="footer-disclaimer">
+              Не размещаем рекламу алкоголя, табака, азартных игр без лицензии и иных категорий, ограниченных ФЗ «О рекламе» №38-ФЗ. 0+
+            </div>
+          </div>
+        </div>
+        {/*
+          Юридические реквизиты — обязательны по 149-ФЗ ст. 10 ч. 2 для коммерческих сайтов.
+          ЗАМЕНИТЕ ПЛЕЙСХОЛДЕРЫ на реальные данные вашего юрлица перед продакшеном.
+          Если оператор — ИП, оставьте только ФИО + ИНН + ОГРНИП. Если ООО — все поля.
+        */}
+        <div className="footer-legal">
+          <div className="container footer-legal-inner">
+            <div className="footer-legal-row">
+              <span className="footer-legal-key">Оператор</span>
+              <span className="footer-legal-val">ИП Иванов Иван Иванович</span>
+            </div>
+            <div className="footer-legal-row">
+              <span className="footer-legal-key">ИНН</span>
+              <span className="footer-legal-val">1500000000</span>
+            </div>
+            <div className="footer-legal-row">
+              <span className="footer-legal-key">ОГРНИП</span>
+              <span className="footer-legal-val">300000000000000</span>
+            </div>
+            <div className="footer-legal-row">
+              <span className="footer-legal-key">Адрес</span>
+              <span className="footer-legal-val">362000, РСО-Алания, г. Владикавказ, ул. ___________, д. __</span>
+            </div>
+            <div className="footer-legal-row">
+              <span className="footer-legal-key">Реклама</span>
+              <span className="footer-legal-val">Сайт носит информационный характер и не является публичной офертой. Все цены ориентировочные.</span>
+            </div>
+          </div>
         </div>
       </footer>
     </main>
